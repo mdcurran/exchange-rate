@@ -1,0 +1,34 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: exchange-rate
+  labels:
+    app: exchange-rate
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: exchange-rate
+  template:
+    metadata:
+      labels:
+        app: exchange-rate
+    spec:
+      containers:
+        - name: exchange-rate
+          image: exchange-rate:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /api/probe
+              port: http
+          livenessProbe:
+            httpGet:
+              path: /api/probe
+              port: http
+            periodSeconds: 10

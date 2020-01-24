@@ -49,6 +49,41 @@ docker run -p 8080:8080 exchange-rate
 Verify the application is running successfully by executing
 `curl localhost:8080/api/probe`.
 
+### Running with Kubernetes
+
+Deploying the application on Kubernetes requires having a running cluster with
+Helm pre-installed.
+
+For macOS users, [Docker for Desktop](https://docs.docker.com/docker-for-mac/kubernetes/)
+is recommended. For everyone else use [microk8s](https://microk8s.io/) or
+something similar.
+
+To install [Helm](https://github.com/helm/helm#install) - just follow the
+instructions.
+
+Once a Kubernetes cluster is running with Helm configured - run from the
+application root:
+
+```
+helm install -n exchange-rate k8s/exchange-rate
+```
+
+To make the Pod within the cluster accessible:
+
+```
+kubectl port-forward svc/exchange-rate 8080:80
+```
+
+Verify the application is running successfully by executing
+`curl localhost:8080/api/probe`.
+
+Finally, to delete and clean-up the application plus associated Kubernetes
+`Deployment` and `Service` objects:
+
+```
+helm del --purge exchange-rate
+```
+
 ## Testing
 
 ### Running Unit Tests
