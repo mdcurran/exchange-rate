@@ -116,6 +116,9 @@ func getRates(payload map[string]interface{}) ([]Rate, error) {
 		return []Rate{}, fmt.Errorf(`unable to parse "rates" from payload`)
 	}
 
+	// Since "date" is essentially a dynamic key, it make life easier later on
+	// if the exchangeratesapi.io response is parsed into some more consistent
+	// structure.
 	for date, rate := range rates {
 		r := Rate{}
 		rate, ok := rate.(map[string]interface{})
