@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sort"
 	"time"
 
 	"github.com/julienschmidt/httprouter"
@@ -68,6 +69,14 @@ type Rate struct {
 	Value    float64 `json:"value"`
 }
 
+// Recommendation contains information on an exchange rate, and whether or not
+// it's a good time to exchange that currency for Euros based on the last weeks
+// historical data.
+type Recommendation struct {
+	Rate          `json:"rate"`
+	Buy    bool   `json:"buy"`
+}
+
 // handleRate fetches the latest value of £1 and $1 in €s. It also makes a
 // recommendation whether or not it's worthwhile to exchange a currency at the
 // current time based on historical data from the previous week.
@@ -96,7 +105,9 @@ func (s *Server) handleRate() httprouter.Handle {
 			Error(w, err, http.StatusBadRequest)
 		}
 
-		s.encodeJSON(w, rates, s.logger)
+		recommendation := makeRecommendation(rates)
+
+		s.encodeJSON(w, recommendation, s.logger)
 	}
 }
 
@@ -108,6 +119,9 @@ func buildURI(currency string) string {
 	return uri
 }
 
+// Convert the exchangeratesapi.io/history response into []Rate.
+//
+// This will make building the recommendation "engine" much easier later on.
 func getRates(payload map[string]interface{}) ([]Rate, error) {
 	var result []Rate
 
@@ -134,4 +148,39 @@ func getRates(payload map[string]interface{}) ([]Rate, error) {
 	}
 
 	return result, nil
+}
+
+// Based on exchange rate valuations for a currency in the previous week, make
+// a recommendation on whether it's a good time to buy currency or not.
+//
+// The recommendation "engine" simply checks to see if the most recent
+// valuation is better or worse than previous valuations in the last week.
+//
+// If the latest valuation is better than half or more of the historical
+// prices, then recommend to buy; otherwise recommend not to buy.
+func makeRecommendation(rates []Rate) Recommendation {
+	// Sort the rates by descending order in terms of dates.
+	sort.Slice(rates, func(i, j int) bool {
+		return rates[i].Date > rates[j].Date
+	})
+
+	counter := 0
+	for _, rate := range rates {
+		if rate.Value > rates[0].Value {
+			counter = counter - 1  // Historical valuation better than latest
+		}
+		if rate.Value < rates[0].Value {
+			counter = counter + 1  // Historical valuation worse than latest
+		}
+	}
+
+	// rates[0] will always be the most recent currency valuation.
+	result := Recommendation{Rate: rates[0]}
+	// The default value is false, therefore we only need to flip to true if
+	// it's actually a good time to buy.
+	if counter >= 0 {
+		result.Buy = true
+	}
+
+	return result
 }
