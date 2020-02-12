@@ -36,7 +36,7 @@ func (s *Server) buildRouteTable() {
 
 // encodeJSON takes content of any type (v) and encodes to the writer (w) in
 // JSON format.
-func (s *Server) encodeJSON(w http.ResponseWriter, v interface{}, l *log.Logger) {
+func (s *Server) encodeJSON(w http.ResponseWriter, v interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	err := json.NewEncoder(w).Encode(v)
 	if err != nil {
@@ -57,7 +57,7 @@ func (s *Server) handleProbe() httprouter.Handle {
 	}
 	return func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		payload := response{Message: "Application healthy!"}
-		s.encodeJSON(w, payload, s.logger)
+		s.encodeJSON(w, payload)
 	}
 }
 
@@ -87,27 +87,31 @@ func (s *Server) handleRate() httprouter.Handle {
 		res, err := http.Get(buildURI(params.Get("currency")))
 		if err != nil {
 			Error(w, err, http.StatusServiceUnavailable)
+			return
 		}
 
 		body, err := ioutil.ReadAll(res.Body)
 		if err != nil {
 			Error(w, err, http.StatusUnprocessableEntity)
+			return
 		}
 
 		var payload map[string]interface{}
 		err = json.Unmarshal(body, &payload)
 		if err != nil {
 			Error(w, err, http.StatusUnprocessableEntity)
+			return
 		}
 
 		rates, err := getRates(payload)
 		if err != nil {
 			Error(w, err, http.StatusBadRequest)
+			return
 		}
 
 		recommendation := makeRecommendation(rates)
 
-		s.encodeJSON(w, recommendation, s.logger)
+		s.encodeJSON(w, recommendation)
 	}
 }
 
